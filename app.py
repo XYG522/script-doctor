@@ -144,19 +144,26 @@ html {scroll-behavior: smooth;}
 [data-testid="stTabs"] [data-baseweb="tab"]:hover {color: #D8C9A6; background: rgba(201, 168, 106, 0.06);}
 
 /* ---- 入场动效：淡入 + 上滑（JS 在元素进入视口时补 .sd-in；
-     此段放在最后，保证过渡属性覆盖上面的悬停过渡，动画结束后悬停恢复生效） ---- */
-h1, h3, [data-testid="stMetric"], [data-testid="stPlotlyChart"],
-[data-testid="stVerticalBlockBorderWrapper"], [data-testid="stExpander"],
-[data-testid="stDataFrame"], [data-testid="stChatMessage"], [data-testid="stAlert"] {opacity: 0;}
+     此段放在最后，保证过渡属性覆盖上面的悬停过渡，动画结束后悬停恢复生效）
+     保险丝：JS 万一失效（任何原因），2.5 秒后动画兜底恢复可见——内容永不永久隐藏 ---- */
+@keyframes sd-failsafe {to {opacity: 1;}}
+h1:not(.sd-in), h3:not(.sd-in), [data-testid="stMetric"]:not(.sd-in),
+[data-testid="stPlotlyChart"]:not(.sd-in),
+[data-testid="stVerticalBlockBorderWrapper"]:not(.sd-in),
+[data-testid="stExpander"]:not(.sd-in), [data-testid="stDataFrame"]:not(.sd-in),
+[data-testid="stChatMessage"]:not(.sd-in), [data-testid="stAlert"]:not(.sd-in) {
+  opacity: 0;
+  animation: sd-failsafe 0.4s ease 2.5s forwards;}
 .sd-pre {transform: translateY(18px);
          transition: opacity 0.5s ease var(--sd-d, 0s),
-                     transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) var(--sd-d, 0s);}
+                     transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) var(--sd-d, 0s);
+         animation: none !important;}
 .sd-in {opacity: 1; transform: translateY(0);}
 @media (prefers-reduced-motion: reduce) {
   h1, h3, [data-testid="stMetric"], [data-testid="stPlotlyChart"],
   [data-testid="stVerticalBlockBorderWrapper"], [data-testid="stExpander"],
-  [data-testid="stDataFrame"], [data-testid="stChatMessage"], [data-testid="stAlert"] {opacity: 1;}
-  .sd-pre {transform: none; transition: none;}
+  [data-testid="stDataFrame"], [data-testid="stChatMessage"], [data-testid="stAlert"] {opacity: 1; animation: none;}
+  .sd-pre {transform: none; transition: none; animation: none;}
 }
 </style>
 """
@@ -172,21 +179,20 @@ _JS = """
   var SEL = 'h1,h3,[data-testid="stMetric"],[data-testid="stPlotlyChart"],' +
             '[data-testid="stVerticalBlockBorderWrapper"],[data-testid="stExpander"],' +
             '[data-testid="stDataFrame"],[data-testid="stChatMessage"],[data-testid="stAlert"]';
-  var io = w.__sdIO;
-  if (!io) {
-    io = new w.IntersectionObserver(function (entries) {
-      entries.forEach(function (e) {
-        if (e.isIntersecting) {
-          e.target.classList.add('sd-in');
-          w.setTimeout(function () { e.target.classList.remove('sd-pre'); }, 1000);
-          io.unobserve(e.target);
-        }
-      });
-    }, { threshold: 0, rootMargin: '0px 0px -2% 0px' });
-    w.__sdIO = io;
-  }
-  var attach = w.__sdAttach || (w.__sdAttach = function (el) {
-    if (!el || el.classList.contains('sd-in')) return;
+  // 每个 iframe 自带观察器（不存跨域单例）：Streamlit 重渲染会替换 iframe，
+  // 旧 iframe 的观察器随它一起销毁，但当前页面对应的最新 iframe 一定活着，
+  // 由它接管全部元素。若用单例，长时间分析后旧回调域失效，新元素永远无法点亮。
+  var io = new w.IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) {
+        e.target.classList.add('sd-in');
+        w.setTimeout(function () { e.target.classList.remove('sd-pre'); }, 1000);
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0, rootMargin: '0px 0px -2% 0px' });
+  function attach(el) {
+    if (!el || el.classList.contains('sd-in') || el.classList.contains('sd-pre')) return;
     var n = w.__sdN || 0;
     if (el.getBoundingClientRect().top < w.innerHeight * 0.98) {
       el.style.setProperty('--sd-d', ((n++ % 6) * 70) + 'ms');
@@ -194,10 +200,10 @@ _JS = """
     w.__sdN = n;
     el.classList.add('sd-pre');
     io.observe(el);
-  });
+  }
   doc.querySelectorAll(SEL).forEach(attach);
-  if (!w.__sdMO && doc.body) {
-    w.__sdMO = new w.MutationObserver(function (muts) {
+  if (doc.body) {
+    var mo = new w.MutationObserver(function (muts) {
       muts.forEach(function (m) {
         m.addedNodes.forEach(function (node) {
           if (node.nodeType !== 1) return;
@@ -206,7 +212,7 @@ _JS = """
         });
       });
     });
-    w.__sdMO.observe(doc.body, { childList: true, subtree: true });
+    mo.observe(doc.body, { childList: true, subtree: true });
   }
 })();
 </script>
