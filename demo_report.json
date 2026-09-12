@@ -1,0 +1,165 @@
+{
+  "script_meta": {
+    "title": "深夜便利店",
+    "word_count": 296,
+    "scene_count": 4,
+    "acts": [
+      {"n": 1, "name": "第一幕 相遇", "scene_range": "1-2"},
+      {"n": 2, "name": "第二幕 靠近", "scene_range": "3-4"}
+    ]
+  },
+  "hard_checks": {
+    "dialogue": {
+      "ratio": 0.369,
+      "chars": 90,
+      "lines": 7,
+      "verdict": "样本过短，跳过判定（全文不足 5000 字）"
+    },
+    "scenes": {
+      "count": 4,
+      "lengths": [67, 47, 59, 33],
+      "avg": 51.5,
+      "median": 53.0,
+      "longest": {"scene": 1, "chars": 67},
+      "shortest": {"scene": 4, "chars": 33},
+      "too_long": [],
+      "too_short": [],
+      "verdict": "样本过短，跳过判定（全文不足 5000 字）"
+    },
+    "page_time": {
+      "page_chars": 600,
+      "chars": 244,
+      "pages": 0.4,
+      "minutes": 0.4
+    },
+    "skipped": true
+  },
+  "score": {
+    "overall": 68,
+    "dimensions": {"character": 62, "emotion": 75, "pacing": 60, "logic": 70, "commercial": 55}
+  },
+  "characters": {
+    "cast": [
+      {
+        "name": "李薇",
+        "role": "protagonist",
+        "first_scene": 1,
+        "aliases": [],
+        "scene_count": 4,
+        "function": "主线人物",
+        "analysis": "以夜班守住孤独，照片揭示思念",
+        "evidence": {"scene": 4, "text": "从抽屉里拿出一张泛黄的照片"}
+      },
+      {
+        "name": "陈默",
+        "role": "supporting",
+        "first_scene": 1,
+        "aliases": [],
+        "scene_count": 3,
+        "function": "映照主角的另一面",
+        "analysis": "同为夜行者，与李薇互为镜像",
+        "evidence": {"scene": 3, "text": "白天太吵，晚上才像活着"}
+      }
+    ],
+    "distribution_issues": ["两人戏份接近均分，配角功能性略强"]
+  },
+  "relationships": [
+    {
+      "pair": ["李薇", "陈默"],
+      "type": "陌生—相识",
+      "trajectory": "顾客—偶遇—短暂共鸣—各自独行",
+      "turning_points": [{"scene": 2, "text": "李薇出来倒垃圾，看见他，停下脚步"}],
+      "issues": "关系止于共鸣，缺乏冲突"
+    }
+  ],
+  "emotion_curve": {
+    "granularity": "scene",
+    "points": [
+      {"scene": 1, "value": -1, "character": "李薇", "label": "疲惫低回", "evidence": {"scene": 1, "text": "李薇站在收银台后打哈欠"}},
+      {"scene": 1, "value": 0, "character": "陈默", "label": "平静试探", "evidence": {"scene": 1, "text": "这么晚了，还不下班？"}},
+      {"scene": 2, "value": 0, "character": "李薇", "label": "平静偶遇"},
+      {"scene": 2, "value": -1, "character": "陈默", "label": "落寞袒露", "evidence": {"scene": 2, "text": "家没人"}},
+      {"scene": 3, "value": 2, "character": "李薇", "label": "共鸣上扬", "evidence": {"scene": 3, "text": "李薇笑了一下"}},
+      {"scene": 3, "value": 1, "character": "陈默", "label": "放松打开", "evidence": {"scene": 3, "text": "白天太吵，晚上才像活着"}},
+      {"scene": 4, "value": -1, "character": "李薇", "label": "独自回望", "evidence": {"scene": 4, "text": "看了很久"}}
+    ],
+    "summary": "李薇偶遇带来短暂上扬、结尾回落孤独底色；陈默从平静试探到放松打开，第三场双线共振",
+    "flatness_issues": ["第1-2场情感变化不足"]
+  },
+  "pacing": {
+    "per_act": [
+      {
+        "act": 1,
+        "tension": 4,
+        "verdict": "拖沓",
+        "reason": "第1场仅建立人物状态，无事件推进",
+        "evidence": {"scene": 1, "text": "李薇站在收银台后打哈欠"}
+      },
+      {"act": 2, "tension": 6, "verdict": "正常", "reason": "对话推进关系，结尾留出钩子"}
+    ],
+    "dragging_scenes": [{"scene": 1, "value": 3, "label": "开场纯状态描写"}],
+    "rushed_scenes": [],
+    "overall_verdict": "开局稍缓，整体基本正常"
+  },
+  "logic": {
+    "holes": [
+      {
+        "id": "lh1",
+        "severity": "medium",
+        "type": "动机问题",
+        "description": "结尾照片的思念对象在前文无铺垫，情感落点略显突兀",
+        "evidence_quotes": [{"scene": 4, "text": "从抽屉里拿出一张泛黄的照片，看了很久"}],
+        "confidence": 0.6,
+        "basis": "照片是唯一未在对话或动作中铺垫的线索",
+        "suggestion_hint": "在第1场加入照片的视觉细节或动作伏笔"
+      },
+      {
+        "id": "lh2",
+        "severity": "low",
+        "type": "动机问题",
+        "description": "\"家没人\"背后的原因未展开，观众悬念落空",
+        "evidence_quotes": [{"scene": 2, "text": "家没人"}],
+        "confidence": 0.7,
+        "basis": "台词抛出信息后全片未回收",
+        "suggestion_hint": "补一个未接来电或门牌特写"
+      }
+    ]
+  },
+  "commercial": {
+    "genre_elements": ["都市情感", "文艺短片"],
+    "target_audience": "25-35岁都市青年、短片节展观众",
+    "benchmarks": [],
+    "strengths": ["意象统一（夜/便利店）", "对白简洁克制"],
+    "risks": ["冲突偏弱，缺乏戏剧钩子", "题材同质化"],
+    "confidence": 0.5
+  },
+  "suggestions": [
+    {
+      "rank": 1,
+      "problem": "情感线索前置不足",
+      "action": {"scene": 1, "concrete": "在开场收银台旁放一张照片一角入画，李薇擦拭时短暂停顿"},
+      "expected_effect": "结尾照片有呼应，情感落点不突兀",
+      "references": ["lh1"]
+    },
+    {
+      "rank": 2,
+      "problem": "\"家没人\"悬念未回收",
+      "action": {"scene": 2, "concrete": "陈默蹲门口点烟时手机亮起未接来电，他看了一眼按掉"},
+      "expected_effect": "暗示其回避关系，丰富人物前史",
+      "references": ["lh2"]
+    },
+    {
+      "rank": 3,
+      "problem": "第2场与第3场功能重复",
+      "action": {"scene": 2, "concrete": "将第2场倒垃圾相遇与第3场递热水合并为一场连续动作"},
+      "expected_effect": "节奏更紧凑，留出片尾情绪空间",
+      "references": []
+    }
+  ],
+  "meta": {
+    "model": "deepseek-v4-pro",
+    "generated_at": "2026-09-12T00:00:00Z",
+    "is_cached_demo": true,
+    "modules_selected": ["characters", "relationships", "emotion", "pacing", "logic", "commercial"]
+  }
+}
