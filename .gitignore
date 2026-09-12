@@ -1,0 +1,16 @@
+# 敏感文件：真实 API Key 与本地用户数据库，绝不入库
+.env
+.streamlit/secrets.toml
+users.db
+*.db
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 本地工具目录
+.claude/
+
+# 系统杂项
+.DS_Store
+Thumbs.db
