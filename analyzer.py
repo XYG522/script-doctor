@@ -1,8 +1,8 @@
-"""分析编排器：文本加载、场次切分、Prompt 链（3 轮 8 调用）、长文本分块、校验与防幻觉。
+"""分析编排器：文本加载、场次切分、Prompt 链（4 轮 10 调用）、长文本分块、校验与防幻觉。
 
 流程：
-- ≤2 万字：R1 解析 → R2 并行 6 模块 → R3 评分与建议
-- >2 万字：L1 场头概览解析 → L2 分块细读（8~12 场/块，重叠 1 场）→ L3 汇总合并
+- ≤2 万字：R1 解析 → R2 并行 7 模块 → R3 评分与建议 → R4 改写示例
+- >2 万字：L1 场头概览解析 → L2 分块细读（8~12 场/块，重叠 1 场）→ L3 汇总合并 → R4 改写示例
 
 防幻觉手段：
 1. 引用硬校验：quote.text 去空白后必须能在原文中找到，否则剔除并记录警告
@@ -32,7 +32,7 @@ CHUNK_THRESHOLD_CHARS = 20000
 CHUNK_MAX_SCENES = 12
 CHUNK_OVERLAP_SCENES = 1
 MAX_REPAIR_RETRIES = 2
-MODULES_R2 = ["characters", "relationships", "emotion", "pacing", "logic", "commercial"]
+MODULES_R2 = ["characters", "relationships", "emotion", "pacing", "logic", "structure", "commercial"]
 MODULE_LABELS = {
     "parse": "剧本解析",
     "characters": "角色分布",
@@ -40,19 +40,23 @@ MODULE_LABELS = {
     "emotion": "情感曲线",
     "pacing": "节奏分析",
     "logic": "逻辑漏洞",
+    "structure": "结构体检",
     "commercial": "商业潜力",
     "final": "评分与建议",
+    "rewrite": "改写示例",
     "chat": "剧本医生",
 }
 # 模块 → 评分维度（relationships 无对应维度）
 MODULE_DIM = {"characters": "character", "emotion": "emotion", "pacing": "pacing",
-              "logic": "logic", "commercial": "commercial"}
+              "logic": "logic", "structure": "structure", "commercial": "commercial"}
 
 # ---- 成本预估常量（上传页实时展示；为估算值，与实际账单有偏差）----
 EST_OUTPUT_TOKENS = {"parse": 600, "characters": 500, "relationships": 400, "emotion": 600,
-                     "pacing": 500, "logic": 700, "commercial": 500, "final": 800, "chat": 400}
+                     "pacing": 500, "logic": 700, "structure": 600, "commercial": 500,
+                     "final": 800, "rewrite": 900, "chat": 400}
 EST_OVERHEAD_TOKENS = 600    # 每次调用的模板/schema 固定开销
 EST_UPSTREAM_TOKENS = 1500   # final 调用的上游 JSON 估算
+EST_REWRITE_INPUT_TOKENS = 1500  # R4 改写示例：3 条建议 ~300 + 落点场次原文 ~600 + 开销 600
 EST_OVERVIEW_PER_SCENE = 60  # 分块模式场头概览每场约 60 token
 EST_CHARS_PER_TOKEN = 1.0    # 保守口径：1 字 ≈ 1 token（中文实际约 0.6~1.0）
 EST_BUFFER = 1.2             # 输出 token 重试余量
@@ -74,15 +78,18 @@ def estimate_run_cost(text: str, modules: list) -> dict:
         chunks = max(1, math.ceil(len(scenes) / CHUNK_MAX_SCENES))
         overview = len(scenes) * EST_OVERVIEW_PER_SCENE
         per_chunk_in = (chars * EST_CHARS_PER_TOKEN) / chunks + EST_OVERHEAD_TOKENS
-        calls = 1 + len(modules) * chunks + 1
-        in_tok = overview + len(modules) * chunks * per_chunk_in + EST_UPSTREAM_TOKENS
+        calls = 1 + len(modules) * chunks + 1 + 1
+        in_tok = (overview + len(modules) * chunks * per_chunk_in
+                  + EST_UPSTREAM_TOKENS + EST_REWRITE_INPUT_TOKENS)
         out_tok = EST_OUTPUT_TOKENS["parse"] + sum(EST_OUTPUT_TOKENS[m] for m in modules) * chunks \
-            + EST_OUTPUT_TOKENS["final"]
+            + EST_OUTPUT_TOKENS["final"] + EST_OUTPUT_TOKENS["rewrite"]
     else:
-        calls = 2 + len(modules)
-        in_tok = calls * (chars * EST_CHARS_PER_TOKEN + EST_OVERHEAD_TOKENS) + EST_UPSTREAM_TOKENS
+        # R4 改写示例不携带全文，只带建议+落点场次原文 → 输入单独按常量估算
+        calls = 2 + len(modules) + 1
+        in_tok = (calls - 1) * (chars * EST_CHARS_PER_TOKEN + EST_OVERHEAD_TOKENS) \
+            + EST_UPSTREAM_TOKENS + EST_REWRITE_INPUT_TOKENS
         out_tok = EST_OUTPUT_TOKENS["parse"] + sum(EST_OUTPUT_TOKENS[m] for m in modules) \
-            + EST_OUTPUT_TOKENS["final"]
+            + EST_OUTPUT_TOKENS["final"] + EST_OUTPUT_TOKENS["rewrite"]
 
     usage = {
         "input_tokens": int(in_tok),
@@ -115,7 +122,8 @@ def _build_review_block(prev_suggestions: list, chunked: bool) -> str:
         "【上一版修改建议回顾】\n"
         "上一版分析给出了以下修改建议。请逐条判断当前剧本是否已落实，并在输出中增加 "
         "prev_suggestions_review 数组：rank 对应建议序号；adopted 为 true（已落实）或 false（未落实）；"
-        "evidence 为当前剧本中支持判断的原文引用（逐字≤40字）" + ev_note + "；note 为判断依据≤40字。\n"
+        "evidence 为当前剧本中支持判断的原文引用（逐字≤40字）" + ev_note + "；"
+        "note 为判断依据≤40字；adopted=false 时，note 必须写明可执行的「还差哪一步」。\n"
         "上一版建议（json）：\n" + json.dumps(items, ensure_ascii=False)
     )
 
@@ -306,7 +314,8 @@ def report_digest(report: dict) -> str:
     ov = sc.get("overall")
     lines.append("综合评分：" + (f"{ov}/100" if ov is not None else "未评分（本次未运行评分模块）"))
     if dims:
-        zh = {"character": "角色", "emotion": "情感", "pacing": "节奏", "logic": "逻辑", "commercial": "商业"}
+        zh = {"character": "角色", "emotion": "情感", "pacing": "节奏", "logic": "逻辑",
+              "structure": "结构", "commercial": "商业"}
         lines.append("分项：" + "、".join(
             f"{zh.get(k, k)} {v}" for k, v in dims.items() if isinstance(v, (int, float))))
     holes = (report.get("logic") or {}).get("holes") or []
@@ -462,7 +471,59 @@ def _merge_module(module: str, parts: list):
             except (TypeError, ValueError):
                 pass
         return merged
+    if module == "structure":
+        foreshadows, seen_f, arcs = [], set(), []
+        for p in parts:
+            for f in p.get("foreshadows", []):
+                key = (f.get("setup_scene"), (f.get("setup") or "").strip())
+                if key not in seen_f:
+                    seen_f.add(key)
+                    foreshadows.append(f)
+            for a in p.get("arcs", []):
+                if a.get("character") not in [x.get("character") for x in arcs]:
+                    arcs.append(a)
+        return {
+            # 三幕跨越全文：分块各自划分不可信，仅取末块（含结局）划分
+            "acts": parts[-1].get("acts", []),
+            "beats": [b for p in parts for b in p.get("beats", [])],
+            "foreshadows": foreshadows,
+            "arcs": arcs,
+        }
     return parts[-1]
+
+
+def _validate_structure(data: dict, warnings: list) -> dict:
+    """结构模块规则校验：伏笔回收场次必须 ≥ 埋点场次。
+
+    已回收（resolved）但回收场次小于埋点场次 → 疑似编造，强制改为 unresolved、
+    清空回收内容并告警；status 缺失/非法也归为 unresolved。保证报告页
+    「回收 ≥ 埋点」的口径成立（与逻辑漏洞模块同源的防幻觉约束）。
+    """
+    out = {
+        "acts": data.get("acts") or [],
+        "beats": data.get("beats") or [],
+        "foreshadows": [],
+        "arcs": data.get("arcs") or [],
+    }
+    for f in data.get("foreshadows") or []:
+        f = dict(f)
+        try:
+            setup = int(f.get("setup_scene") or 0)
+            payoff = int(f.get("payoff_scene") or 0)
+        except (TypeError, ValueError):
+            setup, payoff = 0, 0
+        if f.get("status") not in ("resolved", "unresolved"):
+            f["status"] = "unresolved"
+        if f.get("status") == "resolved" and payoff < setup:
+            warnings.append(
+                f"[结构体检] 伏笔回收场次（第 {payoff} 场）小于埋点场次（第 {setup} 场），"
+                f"疑似编造，已按未回收处理：{(f.get('setup') or '')[:30]}"
+            )
+            f["status"] = "unresolved"
+            f["payoff"] = ""
+            f["payoff_scene"] = None
+        out["foreshadows"].append(f)
+    return out
 
 
 def _run_chunked(client, script_text, scenes, stats, progress, track, warnings, modules) -> dict:
@@ -560,11 +621,15 @@ def _assemble(script_text, scenes, parse_data, clean, final_data, client, chunke
             "per_act": [], "overall_verdict": "", "dragging_scenes": [], "rushed_scenes": [],
         },
         "logic": {"holes": (clean.get("logic") or {}).get("holes", [])},
+        "structure": clean.get("structure") or {
+            "acts": [], "beats": [], "foreshadows": [], "arcs": [],
+        },
         "commercial": clean.get("commercial") or {
             "genre_elements": [], "target_audience": "", "benchmarks": [],
             "strengths": [], "risks": [], "confidence": 0.0,
         },
         "suggestions": (final_data.get("suggestions") or [])[:3],
+        "rewrites": ((clean.get("rewrite") or {}).get("rewrites") or [])[:3],
         "prev_suggestions_review": final_data.get("prev_suggestions_review") or [],
         "meta": {
             "model": client.model,
@@ -698,6 +763,10 @@ def run_pipeline(script_text: str, client, progress_cb=None, prev_suggestions=No
             data = res.get("data")
             clean[module] = _filter_quotes(data, flat, warnings, module) if data is not None else None
 
+    # 结构模块规则校验：伏笔回收场次 ≥ 埋点场次（分块合并结果同样适用）
+    if clean.get("structure"):
+        clean["structure"] = _validate_structure(clean["structure"], warnings)
+
     # ---- R3 评分与建议 ----
     progress(0.85, "③ 综合评分与 3 条修改建议")
     system8 = SYSTEM_BASE + "\n" + MODULE_SYSTEM_ADDON["final"]
@@ -721,6 +790,32 @@ def run_pipeline(script_text: str, client, progress_cb=None, prev_suggestions=No
     final_data = r8["data"] or {"score": {"overall": 0, "dimensions": {}}, "suggestions": []}
     if final_data:
         final_data = _filter_quotes(final_data, re.sub(r"\s+", "", script_text), warnings, "final")
+
+    # ---- R4 改写示例（每条建议 → 可直接替换的剧本片段；只喂落点场次原文）----
+    suggestions = final_data.get("suggestions") or []
+    if suggestions:
+        progress(0.9, "④ 改写示例（建议 → 可直接替换的片段）")
+        scene_map = {s["n"]: s for s in scenes}
+        scene_parts = []
+        for s in suggestions[:3]:
+            sc = (s.get("action") or {}).get("scene")
+            content = (scene_map.get(sc) or {}).get("content", "")
+            if content:
+                scene_parts.append(f"第{sc}场：\n{content}")
+        scene_text = "\n\n".join(scene_parts) or "（无对应场次原文，仅基于建议给出改写方向）"
+        user_rw = (
+            USER_TEMPLATES["rewrite"]
+            .replace("{SUGGESTIONS}", json.dumps(suggestions, ensure_ascii=False))
+            .replace("{SCENE_TEXT}", scene_text)
+        )
+        r_rw = _run_module(client, "rewrite",
+                           SYSTEM_BASE + "\n" + MODULE_SYSTEM_ADDON["rewrite"],
+                           user_rw, warnings)
+        track(r_rw, "rewrite")
+        rw_data = r_rw["data"]
+        if rw_data is not None:
+            rw_data = _filter_quotes(rw_data, re.sub(r"\s+", "", script_text), warnings, "rewrite")
+        clean["rewrite"] = rw_data
 
     # ---- 组装 ----
     progress(0.95, "组装报告与整体校验")

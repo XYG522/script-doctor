@@ -48,15 +48,18 @@ def chart_contains(els, needle):
 TEXT_1000 = "动" * 1000
 
 est_all = analyzer.estimate_run_cost(TEXT_1000, ALL)
-check(est_all["calls"] == 8, "6 模块非分块：parse + 6 模块 + final = 8 次调用")
-check(est_all["input_tokens"] == 8 * (1000 + 600) + 1500, "输入 token：8×(1000+600)+1500=14300")
-check(est_all["output_tokens"] == int((600 + 3200 + 800) * 1.2), "输出 token：(600+3200+800)×1.2=5520")
-check(est_all["est_cost_usd"] == 0.0204, "预估成本 14300/5520 → $0.0204（闲时价）")
+check(est_all["calls"] == 10, "7 模块非分块：parse + 7 模块 + final + 改写 = 10 次调用")
+check(est_all["input_tokens"] == 9 * (1000 + 600) + 1500 + 1500,
+      "输入 token：9×(1000+600)+1500(上游)+1500(改写)=17400")
+check(est_all["output_tokens"] == int((600 + 3800 + 800 + 900) * 1.2),
+      "输出 token：(600+3800+800+900)×1.2=7320")
+check(est_all["est_cost_usd"] == 0.026, "预估成本 17400/7320 → $0.026（闲时价）")
 
 est_one = analyzer.estimate_run_cost(TEXT_1000, ["emotion"])
-check(est_one["calls"] == 3 and est_one["input_tokens"] == 3 * 1600 + 1500
-      and est_one["output_tokens"] == int(2000 * 1.2) and est_one["est_cost_usd"] == 0.0089,
-      "单模块：3 次调用，成本 $0.0089")
+check(est_one["calls"] == 4 and est_one["input_tokens"] == 3 * 1600 + 1500 + 1500
+      and est_one["output_tokens"] == int((600 + 600 + 800 + 900) * 1.2)
+      and est_one["est_cost_usd"] == 0.012,
+      "单模块：4 次调用（含改写），成本 $0.012")
 check(est_one["est_cost_usd"] < est_all["est_cost_usd"], "勾选越少成本越低（单调）")
 
 check(analyzer.estimate_run_cost(TEXT_1000, ["emotion", "bogus"]) == est_one,
@@ -64,24 +67,25 @@ check(analyzer.estimate_run_cost(TEXT_1000, ["emotion", "bogus"]) == est_one,
 check(analyzer.estimate_run_cost(TEXT_1000, []) ==
       {"calls": 0, "input_tokens": 0, "output_tokens": 0, "est_cost_usd": 0.0},
       "0 模块 → 全零（纯免费硬检查）")
-check(analyzer.estimate_run_cost("", ALL)["calls"] == 8, "空文本不崩溃（按 0 字估算）")
+check(analyzer.estimate_run_cost("", ALL)["calls"] == 10, "空文本不崩溃（按 0 字估算）")
 
 # 分块：25 场 × 910 字 = 22750 字 > 2 万 → 3 块
 CHUNK_TEXT = "".join(f"第{i:02d}场 地点X\n" + "动" * 900 + "\n" for i in range(1, 26))
 est_chunk = analyzer.estimate_run_cost(CHUNK_TEXT, ALL)
-check(est_chunk["calls"] == 1 + 6 * 3 + 1, "分块模式：1 + 6 模块 × 3 块 + final = 20 次调用")
-check(est_chunk["input_tokens"] == int(1500 + 6 * 3 * (len(CHUNK_TEXT) / 3 + 600) + 1500),
-      "分块输入：概览 + 6×3 块×(22750/3+600) + 上游 = 150300")
-check(est_chunk["output_tokens"] == int((600 + 3200 * 3 + 800) * 1.2), "分块输出 ×3 块 = 13200")
-check(est_chunk["est_cost_usd"] == 0.1253, "分块预估成本 $0.1253")
+check(est_chunk["calls"] == 1 + 7 * 3 + 1 + 1, "分块模式：1 + 7 模块 × 3 块 + final + 改写 = 24 次调用")
+check(est_chunk["input_tokens"] == int(1500 + 7 * 3 * (len(CHUNK_TEXT) / 3 + 600) + 1500 + 1500),
+      "分块输入：概览 + 7×3 块×(22750/3+600) + 上游 + 改写")
+check(est_chunk["output_tokens"] == int((600 + 3800 * 3 + 800 + 900) * 1.2), "分块输出 ×3 块（含改写）")
+check(est_chunk["est_cost_usd"] == 0.1489, "分块预估成本 $0.1489")
 
 # ---- 1. run_pipeline modules 参数（fake client）----
 PARSE = {"title": "模块测试剧本", "scenes": [{"n": 1, "title": "第1场", "summary": "x"}],
          "acts": [], "characters": []}
 FINAL_DATA = {
     "score": {"overall": 70, "dimensions": {"character": 70, "emotion": 70, "pacing": 70,
-                                            "logic": 70, "commercial": 70}},
-    "suggestions": [],
+                                            "logic": 70, "structure": 70, "commercial": 70}},
+    "suggestions": [{"rank": 1, "problem": "开场单薄", "action": {"scene": 1, "concrete": "补一句对白"},
+                     "expected_effect": "人物立起来", "references": []}],
     "prev_suggestions_review": [],
 }
 
@@ -109,6 +113,11 @@ class FakeClient:
             data = {"per_act": [], "overall_verdict": "", "dragging_scenes": [], "rushed_scenes": []}
         elif "逻辑审查员" in system:
             data = {"holes": []}
+        elif "结构分析师" in system:
+            data = {"acts": [], "beats": [], "foreshadows": [], "arcs": []}
+        elif "改写顾问" in system:
+            data = {"rewrites": [{"rank": 1, "original": {"scene": 1, "text": "你好"},
+                                  "rewritten": "改写文本", "note": "最小改动"}]}
         elif "市场视角" in system:
             data = {"genre_elements": [], "target_audience": "", "benchmarks": [],
                     "strengths": [], "risks": [], "confidence": 0.5}
@@ -126,15 +135,17 @@ SCRIPT = "第1场 测试\n你好。"
 
 c1 = FakeClient()
 rep1, _ = analyzer.run_pipeline(SCRIPT, c1, modules=["emotion"])
-check(len(c1.calls) == 3, "只勾情感曲线：仅 3 次 LLM 调用")
-check("结构解析器" in c1.calls[0]["system"] and "总审读" in c1.calls[-1]["system"]
+check(len(c1.calls) == 4, "只勾情感曲线：4 次 LLM 调用（含改写示例）")
+check("结构解析器" in c1.calls[0]["system"] and "总审读" in c1.calls[-2]["system"]
+      and "改写顾问" in c1.calls[-1]["system"]
       and any("情感曲线" in x["system"] for x in c1.calls),
-      "调用序列：结构解析器 → 情感曲线 → 总审读")
+      "调用序列：结构解析器 → 情感曲线 → 总审读 → 改写顾问")
 check(rep1["meta"]["modules_selected"] == ["emotion"], "报告 meta 记录 modules_selected")
 check(rep1["score"]["dimensions"] == {"emotion": 70}, "未勾模块的评分维度被剔除")
-check(rep1["meta"]["est_run"]["calls"] == 3, "报告 meta 附预估 3 次调用")
+check(rep1["meta"]["est_run"]["calls"] == 4, "报告 meta 附预估 4 次调用")
 check(rep1["characters"]["cast"] == [], "未分析模块落到空默认结构（渲染不崩）")
 check("hard_checks" in rep1, "硬检查仍随报告附带")
+check(rep1["rewrites"][0]["rewritten"] == "改写文本", "改写示例进入报告")
 
 c2 = FakeClient()
 rep2, _ = analyzer.run_pipeline(SCRIPT, c2, modules=["relationships"])
@@ -142,7 +153,7 @@ check(rep2["score"]["dimensions"] == {}, "角色关系无评分维度 → dimens
 
 c3 = FakeClient()
 rep3, _ = analyzer.run_pipeline(SCRIPT, c3, modules=["emotion", "bogus", ""])
-check(len(c3.calls) == 3 and rep3["meta"]["modules_selected"] == ["emotion"],
+check(len(c3.calls) == 4 and rep3["meta"]["modules_selected"] == ["emotion"],
       "非法模块名被过滤（同单模块行为）")
 
 c4 = FakeClient()
@@ -158,17 +169,18 @@ check(warns4 == [], "0 模块无警告")
 
 c5 = FakeClient()
 rep5, _ = analyzer.run_pipeline(SCRIPT, c5)  # modules=None → 全选（老调用兼容）
-check(len(c5.calls) == 8, "modules=None → 全选 8 次调用")
+check(len(c5.calls) == 10, "modules=None → 全选 10 次调用")
 check(rep5["meta"]["modules_selected"] == ALL, "modules=None → modules_selected 记录全选")
-check(set(rep5["score"]["dimensions"]) == {"character", "emotion", "pacing", "logic", "commercial"},
-      "全选时 5 维评分齐全")
+check(set(rep5["score"]["dimensions"]) == {"character", "emotion", "pacing", "logic",
+                                           "structure", "commercial"},
+      "全选时 6 维评分齐全")
 
 # ---- 2. AppTest 界面流程 ----
 FAKE_LOGS = {"modules": None}
 FAKE_REPORT = {
     "script_meta": {"title": "模块测试剧本", "word_count": 100, "scene_count": 1, "acts": []},
     "score": {"overall": 77, "dimensions": {"character": 70, "emotion": 70, "pacing": 70,
-                                            "logic": 70, "commercial": 70}},
+                                            "logic": 70, "structure": 70, "commercial": 70}},
     "characters": {"cast": [], "distribution_issues": []},
     "relationships": [],
     "emotion_curve": {"points": [], "summary": "", "flatness_issues": []},
@@ -226,19 +238,19 @@ at.text_input(key="login_password").set_value("abc12345")
 at.button(key="btn_login").click().run()
 
 mod_boxes = [b for b in at.checkbox if b.key and b.key.startswith("mod_")]
-check(len(mod_boxes) == 6 and all(b.value for b in mod_boxes), "上传页 6 个模块勾选框且默认全选")
+check(len(mod_boxes) == 7 and all(b.value for b in mod_boxes), "上传页 7 个模块勾选框且默认全选")
 
 at.text_area(key="paste_area").set_value("第1场 模块测试")
 at.run()
 caps = [c.value for c in at.caption]
-check(any("预估成本" in c and "8 次调用" in c for c in caps), "全选时预估 8 次调用")
+check(any("预估成本" in c and "10 次调用" in c for c in caps), "全选时预估 10 次调用")
 
 for m in ALL:
     if m != "emotion":
         at.checkbox(key=f"mod_{m}").set_value(False)
 at.run()
 check(at.session_state["modules"] == ["emotion"], "取消勾选后 session_state 只剩 emotion")
-check(any("3 次调用" in c.value for c in at.caption), "只勾情感曲线时预估 3 次调用")
+check(any("4 次调用" in c.value for c in at.caption), "只勾情感曲线时预估 4 次调用")
 
 at.button(key="btn_paste").click().run()
 check(not at.exception, "模块分析（打桩）无异常")
@@ -249,7 +261,7 @@ check(any(m.value == "77/100" for m in at.metric), "综合评分正常显示")
 check(any(m.label == "情感" and m.value == "70" for m in at.metric), "已勾选模块的维度有分")
 check(any(m.label == "角色" and m.value == "—" for m in at.metric), "未勾选模块的维度显示「—」")
 plots = at.get("plotly_chart")
-check(chart_contains(plots, "1 维评分") and not chart_contains(plots, "5 维评分"),
+check(chart_contains(plots, "1 维评分") and not chart_contains(plots, "6 维评分"),
       "雷达图只画已勾选维度（1 维评分）")
 
 # 全取消 → 免费硬检查报告

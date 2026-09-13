@@ -23,7 +23,7 @@ REPORT_SCHEMA = {
     "type": "object",
     "required": [
         "script_meta", "score", "characters", "relationships",
-        "emotion_curve", "pacing", "logic", "commercial", "suggestions", "meta",
+        "emotion_curve", "pacing", "logic", "structure", "commercial", "suggestions", "meta",
     ],
     "properties": {
         "script_meta": {
@@ -183,6 +183,16 @@ REPORT_SCHEMA = {
                 }
             },
         },
+        "structure": {
+            "type": "object",
+            "required": ["acts", "beats", "foreshadows", "arcs"],
+            "properties": {
+                "acts": {"type": "array"},
+                "beats": {"type": "array"},
+                "foreshadows": {"type": "array"},
+                "arcs": {"type": "array"},
+            },
+        },
         "commercial": {
             "type": "object",
             "required": ["genre_elements", "target_audience", "strengths", "risks", "confidence"],
@@ -217,6 +227,7 @@ REPORT_SCHEMA = {
                 },
             },
         },
+        "rewrites": {"type": "array"},
         "prev_suggestions_review": {
             "type": "array",
             "items": {
@@ -429,6 +440,67 @@ MODULE_SCHEMAS = {
             }
         },
     },
+    "structure": {
+        "type": "object",
+        "required": ["acts", "beats", "foreshadows", "arcs"],
+        "properties": {
+            "acts": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": ["act", "name", "scene_start", "scene_end", "summary"],
+                    "properties": {
+                        "act": {"type": "integer"},
+                        "name": {"type": "string"},
+                        "scene_start": {"type": "integer"},
+                        "scene_end": {"type": "integer"},
+                        "summary": {"type": "string"},
+                    },
+                },
+            },
+            "beats": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": ["name", "scene", "description"],
+                    "properties": {
+                        "name": {"type": "string"},
+                        "scene": {"type": "integer"},
+                        "description": {"type": "string"},
+                        "evidence": QUOTE,
+                    },
+                },
+            },
+            "foreshadows": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": ["setup", "setup_scene", "status"],
+                    "properties": {
+                        "setup": {"type": "string"},
+                        "setup_scene": {"type": "integer"},
+                        "payoff": {"type": "string"},
+                        "payoff_scene": {"type": "integer"},
+                        "status": {"type": "string", "enum": ["resolved", "unresolved"]},
+                    },
+                },
+            },
+            "arcs": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": ["character", "start_state", "turning_event", "turning_scene", "end_state"],
+                    "properties": {
+                        "character": {"type": "string"},
+                        "start_state": {"type": "string"},
+                        "turning_event": {"type": "string"},
+                        "turning_scene": {"type": "integer"},
+                        "end_state": {"type": "string"},
+                    },
+                },
+            },
+        },
+    },
     "commercial": {
         "type": "object",
         "required": ["genre_elements", "target_audience", "strengths", "risks", "confidence"],
@@ -439,6 +511,26 @@ MODULE_SCHEMAS = {
             "strengths": {"type": "array", "items": {"type": "string"}},
             "risks": {"type": "array", "items": {"type": "string"}},
             "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        },
+    },
+    "rewrite": {
+        "type": "object",
+        "required": ["rewrites"],
+        "properties": {
+            "rewrites": {
+                "type": "array",
+                "maxItems": 3,
+                "items": {
+                    "type": "object",
+                    "required": ["rank", "original", "rewritten", "note"],
+                    "properties": {
+                        "rank": {"type": "integer"},
+                        "original": QUOTE,
+                        "rewritten": {"type": "string"},
+                        "note": {"type": "string"},
+                    },
+                },
+            },
         },
     },
     "chat": {
@@ -525,15 +617,17 @@ MODULE_SYSTEM_ADDON = {
     "emotion": "你是情感曲线分析师。以主角视角为主，逐场判定情感值。",
     "pacing": "你是节奏分析师。判定锚点：连续≥3场无新信息或冲突推进=拖沓；关键转折缺少过渡=过快。",
     "logic": "你是逻辑审查员。只报告明显的问题；confidence<0.5 的条目不得标记为 high；完全无证据的问题不输出。",
+    "structure": "你是结构分析师。三幕划分与节拍定位必须落到场次号；伏笔必须给出埋点场次与回收场次（回收场次 ≥ 埋点场次），未回收的伏笔 status 标 unresolved 且不填回收信息；找不到证据时输出空数组，禁止编造。",
     "commercial": "你是市场视角分析师。严禁编造任何市场数据、票房数据或虚构作品；对标作品仅为风格参考，标注\"仅供参考\"。",
     "final": "你是总审读。评分只代表模型参考意见；建议必须可执行，禁止\"重写全篇\"类空话。",
+    "rewrite": "你是改写顾问。只做建议要求的最小改动：保持原场次头与对白格式、人物口吻；不新增人物、不改情节事实、不改场次号；original 必须逐字摘自落点场次原文；改写片段可直接替换使用。",
     "chat": "你是「剧本医生」，与编剧围绕刚体检完的剧本进行追问答疑。"
             "只依据提供的剧本文本与体检报告回答；引用原文必须逐字抄写并注明场次；"
             "剧本中没有的情节、台词、人物一律不得声称存在；拿不准就直说，不编造。",
 }
 
 # ---------------------------------------------------------------------------
-# 用户提示词模板（8 模块）
+# 用户提示词模板（10 模块）
 # ---------------------------------------------------------------------------
 
 USER_TEMPLATES = {
@@ -637,6 +731,28 @@ USER_TEMPLATES = {
 {SCRIPT}
 \""" """,
 
+    "structure": """请输出结构体检的 json 分析。
+
+任务：
+1. acts：三幕结构划分（剧本 ≥3 场时输出；每幕 act、name、scene_start/scene_end（含首尾场次）、summary ≤30 字）
+2. beats：关键节拍定位（激励事件、第一幕结尾转折、中点、高潮、结局等）：name、scene（场次号）、description ≤40 字、evidence 引用（无明确证据时省略 evidence）
+3. foreshadows：伏笔清单：
+   - 每条：setup（埋点内容 ≤40 字）、setup_scene（埋点场次）
+   - 已回收：payoff（回收内容 ≤40 字）、payoff_scene（必须 ≥ setup_scene）、status="resolved"
+   - 埋而未收：status="unresolved"，不填 payoff / payoff_scene
+4. arcs：主要人物弧光（主角必出，重要配角可选）：character（规范名）、start_state（起点状态 ≤20 字）、turning_event（转变事件 ≤30 字）、turning_scene、end_state（终点状态 ≤20 字）
+5. 场次号只能使用场次表中的编号；找不到证据的条目输出空数组，严禁编造
+
+输出 json 结构：
+{"acts":[{"act":1,"name":"第一幕 相遇","scene_start":1,"scene_end":2,"summary":"..."}],
+ "beats":[{"name":"激励事件","scene":1,"description":"...","evidence":{"scene":1,"text":"..."}}],
+ "foreshadows":[{"setup":"...","setup_scene":1,"payoff":"...","payoff_scene":4,"status":"resolved"}],
+ "arcs":[{"character":"李薇","start_state":"...","turning_event":"...","turning_scene":3,"end_state":"..."}]}
+
+剧本：\"""
+{SCRIPT}
+\""" """,
+
     "commercial": """请输出商业潜力与类型元素的 json 分析。
 
 任务：
@@ -661,7 +777,7 @@ USER_TEMPLATES = {
 {PREV_SUGGESTIONS}
 
 任务：
-1. score.overall（0-100 整数）与 5 个分项（character/emotion/pacing/logic/commercial，0-100 整数）
+1. score.overall（0-100 整数）与 6 个分项（character/emotion/pacing/logic/structure/commercial，0-100 整数）
 2. suggestions 恰好 3 条（rank 1-3）：
    - problem：要解决的问题（≤40 字）
    - action.scene：落点场次；action.concrete：具体修改动作（≤60 字，可直接执行）
@@ -670,12 +786,31 @@ USER_TEMPLATES = {
    规则：只能引用 confidence≥0.5 的漏洞；建议必须落到具体场次+具体动作。
 
 输出 json 结构：
-{"score":{"overall":68,"dimensions":{"character":62,"emotion":75,"pacing":60,"logic":70,"commercial":55}},
+{"score":{"overall":68,"dimensions":{"character":62,"emotion":75,"pacing":60,"logic":70,"structure":66,"commercial":55}},
  "suggestions":[{"rank":1,"problem":"...","action":{"scene":1,"concrete":"..."},"expected_effect":"...","references":["lh1"]}]}
 
 剧本：\"""
 {SCRIPT}
 \""" """,
+
+    "rewrite": """请针对以下修改建议，逐条输出可直接替换使用的改写示例。
+
+【修改建议】
+{SUGGESTIONS}
+
+【落点场次原文】
+{SCENE_TEXT}
+
+任务：
+1. 每条建议输出一个改写示例（rank 对应建议序号）：
+   - original：从落点场次原文中逐字摘出的待修改片段（{scene, text}，text ≤60 字，必须逐字命中原文）
+   - rewritten：改写后的剧本片段（保持场次头/对白格式与人物口吻，可直接替换使用）
+   - note：改写理由 ≤40 字
+2. 只做建议要求的最小改动：不新增人物、不改情节事实、不改场次号
+3. 找不到可改动的原文时输出空数组，严禁编造
+
+输出 json 结构：
+{"rewrites":[{"rank":1,"original":{"scene":1,"text":"..."},"rewritten":"...","note":"..."}]}""",
 
     "chat": """请以剧本医生的身份回答编剧的追问，输出 json 对象。
 
@@ -711,7 +846,7 @@ MERGE_TEMPLATE = """以下是长剧本分块分析的各模块汇总结果（每
 
 请基于上述汇总，输出综合评分与修改建议的 json。
 任务：
-1. score.overall（0-100 整数）与 5 个分项（character/emotion/pacing/logic/commercial，0-100 整数）
+1. score.overall（0-100 整数）与 6 个分项（character/emotion/pacing/logic/structure/commercial，0-100 整数）
 2. suggestions 恰好 3 条（rank 1-3）：
    - problem（≤40 字）
    - action.scene：落点场次；action.concrete：具体修改动作（≤60 字）
@@ -720,7 +855,7 @@ MERGE_TEMPLATE = """以下是长剧本分块分析的各模块汇总结果（每
    规则：只能引用 confidence≥0.5 的漏洞；建议必须落到具体场次+具体动作。
 
 输出 json 结构：
-{"score":{"overall":68,"dimensions":{"character":62,"emotion":75,"pacing":60,"logic":70,"commercial":55}},
+{"score":{"overall":68,"dimensions":{"character":62,"emotion":75,"pacing":60,"logic":70,"structure":66,"commercial":55}},
  "suggestions":[{"rank":1,"problem":"...","action":{"scene":1,"concrete":"..."},"expected_effect":"...","references":["lh1"]}]}
 
 注意：此为分块模式，长线跨块逻辑检测能力有限。"""

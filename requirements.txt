@@ -1,4 +1,4 @@
-streamlit==1.63  # 锁版本与本地一致：动效依赖 st.components.v1.html，图表参数依赖 width="stretch"
+streamlit==1.63  # 锁版本与本地一致：动效依赖 st.html(unsafe_allow_javascript=True)，图表参数依赖 width="stretch"
 openai>=1.40
 jsonschema>=4.22
 PyMuPDF>=1.24

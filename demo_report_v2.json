@@ -1,0 +1,209 @@
+{
+  "script_meta": {
+    "title": "深夜便利店",
+    "word_count": 319,
+    "scene_count": 3,
+    "acts": [
+      {"n": 1, "name": "第一幕 相遇", "scene_range": "1-1"},
+      {"n": 2, "name": "第二幕 靠近", "scene_range": "2-2"},
+      {"n": 3, "name": "第三幕 回望", "scene_range": "3-3"}
+    ]
+  },
+  "hard_checks": {
+    "dialogue": {
+      "ratio": 0.306,
+      "chars": 90,
+      "lines": 7,
+      "verdict": "样本过短，跳过判定（全文不足 5000 字）"
+    },
+    "scenes": {
+      "count": 3,
+      "lengths": [98, 132, 33],
+      "avg": 87.7,
+      "median": 98,
+      "longest": {"scene": 2, "chars": 132},
+      "shortest": {"scene": 3, "chars": 33},
+      "too_long": [],
+      "too_short": [],
+      "verdict": "样本过短，跳过判定（全文不足 5000 字）"
+    },
+    "page_time": {
+      "page_chars": 600,
+      "chars": 294,
+      "pages": 0.5,
+      "minutes": 0.5
+    },
+    "skipped": true
+  },
+  "score": {
+    "overall": 78,
+    "dimensions": {"character": 70, "emotion": 80, "pacing": 76, "logic": 78, "structure": 75, "commercial": 62}
+  },
+  "characters": {
+    "cast": [
+      {
+        "name": "李薇",
+        "role": "protagonist",
+        "first_scene": 1,
+        "aliases": [],
+        "scene_count": 3,
+        "function": "主线人物",
+        "analysis": "以夜班守住孤独，相框与照片首尾呼应思念",
+        "evidence": {"scene": 1, "text": "收银台一角放着倒扣的相框"}
+      },
+      {
+        "name": "陈默",
+        "role": "supporting",
+        "first_scene": 1,
+        "aliases": [],
+        "scene_count": 2,
+        "function": "映照主角的另一面",
+        "analysis": "按掉来电与「家没人」互为注脚，回避关系有依据",
+        "evidence": {"scene": 2, "text": "手机亮起来电，他看了一眼，按掉"}
+      }
+    ],
+    "distribution_issues": []
+  },
+  "relationships": [
+    {
+      "pair": ["李薇", "陈默"],
+      "type": "陌生—相识",
+      "trajectory": "顾客—偶遇—共鸣—各自独行",
+      "turning_points": [{"scene": 2, "text": "两人隔着门框聊天"}],
+      "issues": ""
+    }
+  ],
+  "emotion_curve": {
+    "granularity": "scene",
+    "points": [
+      {"scene": 1, "value": -1, "character": "李薇", "label": "疲惫低回", "evidence": {"scene": 1, "text": "李薇站在收银台后打哈欠"}},
+      {"scene": 1, "value": 0, "character": "陈默", "label": "平静试探", "evidence": {"scene": 1, "text": "这么晚了，还不下班？"}},
+      {"scene": 2, "value": 1, "character": "李薇", "label": "共鸣上扬", "evidence": {"scene": 2, "text": "李薇笑了一下"}},
+      {"scene": 2, "value": -1, "character": "陈默", "label": "落寞袒露", "evidence": {"scene": 2, "text": "家没人"}},
+      {"scene": 3, "value": -1, "character": "李薇", "label": "独自回望", "evidence": {"scene": 3, "text": "看了很久"}}
+    ],
+    "summary": "李薇第二场因共鸣短暂上扬、结尾回望照片，孤独底色里多了一层被理解的暖意",
+    "flatness_issues": []
+  },
+  "pacing": {
+    "per_act": [
+      {
+        "act": 1,
+        "tension": 5,
+        "verdict": "正常",
+        "reason": "人物状态与相框伏笔并行，无空场",
+        "evidence": {"scene": 1, "text": "收银台一角放着倒扣的相框"}
+      },
+      {"act": 2, "tension": 7, "verdict": "正常", "reason": "相遇、按来电、递热水、共鸣在同一场连续推进"},
+      {"act": 3, "tension": 5, "verdict": "正常", "reason": "结尾收束情绪，照片落点有力"}
+    ],
+    "dragging_scenes": [],
+    "rushed_scenes": [],
+    "overall_verdict": "节奏紧凑，各场均有推进"
+  },
+  "logic": {
+    "holes": []
+  },
+  "structure": {
+    "acts": [
+      {"act": 1, "name": "第一幕 相遇", "scene_start": 1, "scene_end": 1,
+       "summary": "两个夜行者在便利店相遇，相框埋下伏笔"},
+      {"act": 2, "name": "第二幕 靠近", "scene_start": 2, "scene_end": 2,
+       "summary": "共鸣达成，彼此短暂靠近"},
+      {"act": 3, "name": "第三幕 回望", "scene_start": 3, "scene_end": 3,
+       "summary": "离别后独自回望照片"}
+    ],
+    "beats": [
+      {"name": "激励事件", "scene": 1, "description": "陈默深夜进店买烟，打破李薇的守夜常态",
+       "evidence": {"scene": 1, "text": "陈默推门进来，买了一包烟"}},
+      {"name": "中点", "scene": 2, "description": "一杯热水与「晚上才像活着」的共鸣，关系顶点",
+       "evidence": {"scene": 2, "text": "白天太吵，晚上才像活着"}},
+      {"name": "结局", "scene": 3, "description": "照片揭示思念，结尾落回孤独底色",
+       "evidence": {"scene": 3, "text": "从抽屉里拿出一张泛黄的照片，看了很久"}}
+    ],
+    "foreshadows": [
+      {"setup": "收银台一角放着倒扣的相框", "setup_scene": 1,
+       "payoff": "第3场从抽屉里拿出泛黄照片，思念之人揭示", "payoff_scene": 3, "status": "resolved"},
+      {"setup": "手机亮起来电，他看了一眼，按掉", "setup_scene": 2,
+       "payoff": "「家没人」——回避的正是来电那头", "payoff_scene": 2, "status": "resolved"}
+    ],
+    "arcs": [
+      {"character": "李薇", "start_state": "疲惫守夜、封闭自处",
+       "turning_event": "与陈默的共鸣对话", "turning_scene": 2,
+       "end_state": "独自回望照片，孤独中留有暖意"},
+      {"character": "陈默", "start_state": "深夜游荡、回避回家",
+       "turning_event": "按掉来电、接过热水说出心里话", "turning_scene": 2,
+       "end_state": "离开便利店，继续独自夜行"}
+    ]
+  },
+  "commercial": {
+    "genre_elements": ["都市情感", "文艺短片"],
+    "target_audience": "25-35岁都市青年、短片节展观众",
+    "benchmarks": [],
+    "strengths": ["意象统一（夜/便利店）", "对白简洁克制", "情感线索前后呼应"],
+    "risks": ["题材同质化"],
+    "confidence": 0.5
+  },
+  "suggestions": [
+    {
+      "rank": 1,
+      "problem": "结尾照片仍是惊鸿一瞥",
+      "action": {"scene": 3, "concrete": "给照片一个特写动作：李薇用指腹轻轻抹过照片上的脸"},
+      "expected_effect": "结尾情感再加深一层",
+      "references": []
+    },
+    {
+      "rank": 2,
+      "problem": "陈默离开后无后续",
+      "action": {"scene": 3, "concrete": "陈默离开前把打火机留在门边，李薇看见后收进抽屉"},
+      "expected_effect": "关系留钩子，余味更足",
+      "references": []
+    }
+  ],
+  "rewrites": [
+    {
+      "rank": 1,
+      "original": {"scene": 1, "text": "李薇站在收银台后打哈欠"},
+      "rewritten": "李薇站在收银台后打哈欠。收银台一角放着倒扣的相框，李薇擦到那里时停了停，才把抹布移开。",
+      "note": "在原句后插入相框细节与停顿动作，为结尾照片埋伏笔"
+    },
+    {
+      "rank": 2,
+      "original": {"scene": 2, "text": "陈默蹲在门口点烟"},
+      "rewritten": "陈默蹲在门口点烟，手机亮起来电，他看了一眼，按掉。",
+      "note": "补一个按掉来电的动作，暗示「家没人」背后在回避什么"
+    },
+    {
+      "rank": 3,
+      "original": {"scene": 2, "text": "李薇出来倒垃圾，看见他，停下脚步"},
+      "rewritten": "李薇出来倒垃圾，看见他，停下脚步。李薇没说话，转身回店里，倒了一杯热水端出来。两人隔着门框聊天。",
+      "note": "倒垃圾相遇与递热水合并为一场连续动作，节奏更紧凑"
+    }
+  ],
+  "prev_suggestions_review": [
+    {
+      "rank": 1,
+      "adopted": true,
+      "evidence": {"scene": 1, "text": "收银台一角放着倒扣的相框"},
+      "note": "已加相框伏笔，与结尾照片呼应"
+    },
+    {
+      "rank": 2,
+      "adopted": true,
+      "evidence": {"scene": 2, "text": "手机亮起来电，他看了一眼，按掉"},
+      "note": "已补未接来电，暗示其回避关系"
+    },
+    {
+      "rank": 3,
+      "adopted": true,
+      "evidence": {"scene": 2, "text": "李薇没说话，转身回店里，倒了一杯热水端出来"},
+      "note": "倒垃圾与递热水已合并为连续动作"
+    }
+  ],
+  "meta": {
+    "model": "deepseek-v4-pro",
+    "generated_at": "2026-09-13T00:00:00Z",
+    "is_cached_demo": true,
+    "modules_selected": ["characters", "relationships", "emotion", "pacing", "logic", "structure", "commercial"]
+  }
+}

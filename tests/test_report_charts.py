@@ -80,10 +80,10 @@ nodes = node_traces(fig)
 edges = edge_traces(fig)
 check(set(nodes) == {"甲", "乙", "丙"}, "节点 = 关系涉及角色（丁未出场于关系 → 不画）")
 check(len(edges) == 2, "两对关系 → 两条边")
-check(edges[0].line.color == "#B3543A" and edges[0].line.dash == "dot",
-      "issues 非空 → 赤陶虚线")
-check(edges[1].line.color == "#3A4048" and edges[1].line.dash == "solid",
-      "无 issues → 暗灰实线")
+check(edges[0].line.color == "#FF3B30" and edges[0].line.dash == "dot",
+      "issues 非空 → 红虚线（脱离运行时回退浅色调色板）")
+check(edges[1].line.color == "#D2D2D7" and edges[1].line.dash == "solid",
+      "无 issues → 浅灰实线")
 check("宿敌" in edges[0].text and "动机不足" in edges[0].text, "边悬停含类型/走向/问题")
 
 dup = charts.relationship_network({
@@ -97,9 +97,9 @@ dup = charts.relationship_network({
 check(len(edge_traces(dup)) == 1 and edge_traces(dup)[0].line.dash == "solid"
       and "对抗—决裂" in edge_traces(dup)[0].text,
       "重复 pair 合并为一条边（后一条覆盖）")
-check(nodes["甲"].marker.color == "#C9A86A", "主角节点 = 琥珀金")
-check(nodes["乙"].marker.color == "#B3543A", "反派节点 = 赤陶")
-check(nodes["丙"].marker.color == "#7A828C", "未收录角色（孤儿节点）= 图灰")
+check(nodes["甲"].marker.color == "#0071E3", "主角节点 = 苹果蓝")
+check(nodes["乙"].marker.color == "#FF3B30", "反派节点 = 苹果红")
+check(nodes["丙"].marker.color == "#8E8E93", "未收录角色（孤儿节点）= 苹果灰")
 check("未收录于角色表" in (nodes["丙"].hovertext or ""), "孤儿节点悬停标注「未收录」")
 check(nodes["甲"].marker.size > nodes["乙"].marker.size, "出场场次多 → 节点更大")
 check("出场：9 场" in (nodes["甲"].hovertext or ""), "节点悬停含出场场次")
@@ -115,12 +115,36 @@ radar = charts.score_radar({"character": 70, "emotion": 60, "pacing": 50, "logic
 check(radar is not None, "正常维度生成雷达图")
 check(list(radar.data[0].theta) == ["角色", "情感", "节奏", "逻辑", "商业", "角色"], "雷达 5 维标签闭合")
 check(list(radar.data[0].r) == [70, 60, 50, 40, 80, 70], "雷达分值闭合且顺序固定")
-check(radar.data[0].fill == "toself" and radar.data[0].line.color == "#C9A86A", "雷达填充 + 琥珀金")
+check(radar.data[0].fill == "toself" and radar.data[0].line.color == "#0071E3", "雷达填充 + 苹果蓝")
 single = charts.score_radar({"character": 70})
 check(single is not None and list(single.data[0].theta) == ["角色", "角色"]
       and list(single.data[0].r) == [70, 70], "缺失维度直接跳过（单维雷达可渲染）")
 check(charts.score_radar({}) is None, "全空维度返回 None")
 check(charts.score_radar({"character": "70"}) is None, "非数值维度跳过（全跳过 → None）")
+
+# ---- 0.55 六维雷达（结构体检新增维度） ----
+radar6 = charts.score_radar({"character": 70, "emotion": 60, "pacing": 50, "logic": 40,
+                             "structure": 66, "commercial": 80})
+check(list(radar6.data[0].theta) == ["角色", "情感", "节奏", "逻辑", "结构", "商业", "角色"],
+      "雷达 6 维标签闭合（结构在逻辑与商业之间）")
+
+# ---- 0.57 三幕结构图单元测试 ----
+check(charts.structure_act_chart({"structure": {}}) is None, "无幕无节拍返回 None")
+check(charts.structure_act_chart({"structure": {"acts": [], "beats": [], "foreshadows": [], "arcs": []}}) is None,
+      "结构全空返回 None")
+fig_st = charts.structure_act_chart({
+    "script_meta": {"scene_count": 5},
+    "structure": {
+        "acts": [{"act": 1, "name": "第一幕", "scene_start": 1, "scene_end": 2, "summary": "a"}],
+        "beats": [{"name": "激励事件", "scene": 1, "description": "d",
+                   "evidence": {"scene": 1, "text": "x"}}],
+        "foreshadows": [], "arcs": [],
+    },
+})
+check(fig_st is not None, "三幕+节拍生成结构图")
+check(len(fig_st.data) == 1, "结构图 1 条节拍 trace（幕带为 hrect 形状）")
+spec_st = json.loads(fig_st.to_json())
+check("第一幕" in json.dumps(spec_st, ensure_ascii=False), "图内含幕名（unicode 解码后）")
 
 # ---- 0.6 情感曲线（多角色）单元测试 ----
 EMO = {
@@ -143,15 +167,15 @@ fig_emo = charts.emotion_curves(EMO, CAST2)
 check(fig_emo is not None, "多角色情感曲线生成")
 by_name = {t.name: t for t in fig_emo.data}
 check(set(by_name) == {"甲", "乙", "戊"}, "三条线齐全")
-check(by_name["甲"].line.color == "#C9A86A", "主角线 = 琥珀金")
-check(by_name["乙"].line.color == "#B3543A", "反派线 = 赤陶")
-check(by_name["戊"].line.color == "#7A828C", "配角线 = 图灰")
+check(by_name["甲"].line.color == "#0071E3", "主角线 = 苹果蓝")
+check(by_name["乙"].line.color == "#FF3B30", "反派线 = 苹果红")
+check(by_name["戊"].line.color == "#8E8E93", "配角线 = 苹果灰")
 check(list(by_name["戊"].x) == [1, 2] and list(by_name["戊"].y) == [0, 1], "每条线按场次排序")
 check(fig_emo.layout.showlegend is True, "多线显示图例")
 old_emo = charts.emotion_curves(
     {"points": [{"scene": 1, "value": 0}, {"scene": 2, "value": 1}]}, CAST2)
 check(len(old_emo.data) == 1 and old_emo.data[0].name == "主角"
-      and old_emo.data[0].line.color == "#C9A86A", "旧报告（无 character）归「主角」单线琥珀金")
+      and old_emo.data[0].line.color == "#0071E3", "旧报告（无 character）归「主角」单线苹果蓝")
 check(old_emo.layout.showlegend is False, "单线不显示图例")
 check(charts.emotion_curves({"points": []}) is None, "空数据返回 None")
 
@@ -161,7 +185,8 @@ import analyzer  # noqa: E402
 FAKE_REPORT = {
     "script_meta": {"title": "关系测试剧本", "word_count": 8, "scene_count": 1, "acts": []},
     "score": {"overall": 77,
-              "dimensions": {"character": 7, "emotion": 7, "pacing": 7, "logic": 7, "commercial": 7}},
+              "dimensions": {"character": 7, "emotion": 7, "pacing": 7, "logic": 7,
+                             "structure": 7, "commercial": 7}},
     "characters": {"cast": [
         {"name": "甲", "role": "protagonist", "first_scene": 1, "scene_count": 5,
          "function": "主线人物", "analysis": "a"},
@@ -182,9 +207,24 @@ FAKE_REPORT = {
     },
     "pacing": {"per_act": [], "overall_verdict": "", "dragging_scenes": [], "rushed_scenes": []},
     "logic": {"holes": []},
+    "structure": {
+        "acts": [{"act": 1, "name": "第一幕 建立", "scene_start": 1, "scene_end": 1, "summary": "a"}],
+        "beats": [{"name": "激励事件", "scene": 1, "description": "甲出场",
+                   "evidence": {"scene": 1, "text": "关系测试"}}],
+        "foreshadows": [{"setup": "甲的旧手机", "setup_scene": 1, "status": "unresolved"}],
+        "arcs": [{"character": "甲", "start_state": "迷茫", "turning_event": "相遇",
+                  "turning_scene": 1, "end_state": "坚定"}],
+    },
     "commercial": {"genre_elements": [], "target_audience": "", "benchmarks": [],
                    "strengths": [], "risks": [], "confidence": 0.5},
-    "suggestions": [],
+    "suggestions": [
+        {"rank": 1, "problem": "开场单薄", "action": {"scene": 1, "concrete": "补一句内心独白"},
+         "expected_effect": "人物立起来", "references": []},
+    ],
+    "rewrites": [
+        {"rank": 1, "original": {"scene": 1, "text": "关系测试"},
+         "rewritten": "关系测试（改写后）", "note": "最小改动示例"},
+    ],
     "meta": {"model": "fake", "generated_at": "", "is_cached_demo": False, "chunked": False,
              "tokens": {}, "est_cost_usd": 0.0, "timings": {}, "total_elapsed_sec": 0.0},
 }
@@ -214,8 +254,15 @@ check(at.session_state["stage"] == "report", "进入 report 页")
 plotly_els = at.get("plotly_chart")
 check(chart_contains(plotly_els, "甲"), "报告页渲染出关系网络图（含角色名）")
 check(chart_contains(plotly_els, "动机不足"), "图内边悬停含关系问题")
-check(chart_contains(plotly_els, "5 维评分"), "报告页渲染出评分雷达图")
+check(chart_contains(plotly_els, "6 维评分"), "报告页渲染出评分雷达图")
 check(chart_contains(plotly_els, "戊"), "报告页情感曲线含第二角色线（戊）")
+check(chart_contains(plotly_els, "第一幕"), "报告页渲染出三幕结构图")
+check(any("第1场埋点" in m.value for m in at.markdown), "伏笔清单显示埋点")
+check(any("未回收" in c.value for c in at.caption), "伏笔清单标注未回收")
+check(any("迷茫" in m.value for m in at.markdown), "人物弧光显示起点状态")
+check(any("改写示例（可直接替换）" in m.value for m in at.markdown), "建议卡内渲染改写示例")
+check(any("关系测试（改写后）" in el.value for el in at.get("code")), "改写片段以代码块展示")
+check(any("改写理由：最小改动示例" in c.value for c in at.caption), "改写理由说明显示")
 
 # ---- 2. AppTest：游客离线演示也渲染关系图 ----
 at.button(key="btn_logout").click().run()
@@ -224,8 +271,22 @@ next(b for b in at.button if "离线演示报告" in b.label).click().run()
 check(not at.exception, "离线演示无异常")
 check(at.session_state["stage"] == "report", "离线演示进入 report 页")
 check(chart_contains(at.get("plotly_chart"), "李薇"), "离线演示报告渲染关系图（含 李薇）")
-check(chart_contains(at.get("plotly_chart"), "5 维评分"), "离线演示报告渲染雷达图")
+check(chart_contains(at.get("plotly_chart"), "6 维评分"), "离线演示报告渲染雷达图")
 check(chart_contains(at.get("plotly_chart"), "放松打开"), "离线演示情感曲线双线（陈默第3场标签）")
+check(chart_contains(at.get("plotly_chart"), "第一幕"), "离线演示渲染三幕结构图")
+check(any("家没人" in m.value for m in at.markdown), "离线演示伏笔清单含「家没人」")
+check(any("未回收" in c.value for c in at.caption), "离线演示标注未回收伏笔")
+check(any("改写示例（可直接替换）" in m.value for m in at.markdown), "离线演示 v1 报告含改写示例")
+
+# ---- 3. AppTest：离线演示改稿闭环 v1 ↔ v2 切换 ----
+next(b for b in at.button if "加载修改后报告" in b.label).click().run()
+check(not at.exception, "加载 v2 离线报告无异常")
+check(at.session_state["stage"] == "report", "v2 离线报告进入 report 页")
+check(any(m.value == "78/100" for m in at.metric), "v2 报告总分 78/100")
+check(any(m.value == "3/3" for m in at.metric), "v2 指标：建议采纳 3/3")
+check(any("已落实" in m.value for m in at.markdown), "v2 渲染上一版建议采纳情况")
+check(any("返回修改前报告" in b.label for b in at.button), "v2 提供返回 v1 按钮")
+check(any("未回收" in c.value for c in at.caption) is False, "v2 无未回收伏笔（漏洞修复）")
 
 print("FAILURES:", failures)
 sys.exit(1 if failures else 0)

@@ -89,6 +89,9 @@ class FakeClient:
         elif "市场视角" in system:
             data = {"genre_elements": [], "target_audience": "", "benchmarks": [],
                     "strengths": [], "risks": [], "confidence": 0.5}
+        elif "改写顾问" in system:
+            data = {"rewrites": [{"rank": 1, "original": {"scene": 1, "text": "你好"},
+                                  "rewritten": "改写文本", "note": "最小改动"}]}
         elif "总审读" in system:
             if "上一版" in user:
                 data = FINAL_DATA
@@ -109,14 +112,15 @@ rep, warns = analyzer.run_pipeline(
     SCRIPT, c1,
     prev_suggestions=[{"rank": 1, "problem": "改戏", "action": {"scene": 1, "concrete": "改成哭"}}],
 )
-final_call = c1.calls[-1]["user"]
+final_call = c1.calls[-2]["user"]  # 末次调用为改写示例（R4），final 在倒数第二
 check("上一版" in final_call and "改戏" in final_call, "prev 建议注入 final prompt")
 check(rep["prev_suggestions_review"] == [{"rank": 1, "adopted": True, "note": "已改"}], "review 挂进报告")
+check(rep["rewrites"][0]["rewritten"] == "改写文本", "改写示例进入报告")
 check(not any("整体校验未通过" in str(w) for w in warns), "报告整体 schema 校验通过")
 
 c2 = FakeClient()
 rep2, _ = analyzer.run_pipeline(SCRIPT, c2, prev_suggestions=None)
-check("上一版" not in c2.calls[-1]["user"], "无 prev 时不注入")
+check("上一版" not in c2.calls[-2]["user"], "无 prev 时不注入")
 check(rep2["prev_suggestions_review"] == [], "无 prev 时 review 为空")
 check(rep["emotion_curve"]["points"][0].get("character") == "甲",
       "schema 校验接受带 character 的情感点")
@@ -219,7 +223,7 @@ check(any(m.value == "60/100" for m in at.metric) and any(m.value == "80/100" fo
       "v1/v2 总分显示")
 check(any("+20" in (m.value or "") for m in at.metric), "总分变化 +20 显示")
 subs = [s.value for s in at.subheader]
-check("5 维评分对比" in subs and "漏洞对照" in subs and "v1 建议采纳情况" in subs, "三块内容齐全")
+check("分项评分对比" in subs and "漏洞对照" in subs and "v1 建议采纳情况" in subs, "三块内容齐全")
 md = [m.value for m in at.markdown]
 check(any("已落实" in x for x in md), "建议采纳：已落实")
 check(any("v2 新增 1 个漏洞" in x for x in md), "v2 新增漏洞提示")

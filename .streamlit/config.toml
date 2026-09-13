@@ -1,6 +1,66 @@
+# ============================================================
+# 双主题（苹果官网风）：默认浅色，右上角 ⋮ → Settings → Theme 可切换深色。
+# 浅色 #F5F5F7 底 / 白卡片 / 苹果蓝 #0071E3；深色 #0D0D0F 底 / #1D1D1F 卡片 / #2997FF。
+# 字体用系统栈（不使用 Google Fonts：中国大陆网络可能加载失败）。
+# 注意：app.py 内自定义 CSS 变量与 charts.py 调色板与本文件配色保持一致。
+# ============================================================
+
 [theme]
-base = "dark"
-primaryColor = "#C9A86A"
-backgroundColor = "#0E1116"
-secondaryBackgroundColor = "#161A21"
-textColor = "#E8E6E1"
+baseFontSize = 16
+baseRadius = "12px"
+buttonRadius = "full"
+showWidgetBorder = true
+linkUnderline = false
+font = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif"
+headingFont = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif"
+codeFont = "'SF Mono', Consolas, 'Cascadia Mono', 'Microsoft YaHei Mono', monospace"
+headingFontSizes = ["2.4rem", "1.5rem", "1.25rem", "1.1rem", "1rem", "0.9rem"]
+headingFontWeights = [700, 600, 600, 600, 600, 600]
+
+[theme.light]
+primaryColor = "#0071E3"
+backgroundColor = "#F5F5F7"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#1D1D1F"
+linkColor = "#0071E3"
+borderColor = "#D2D2D7"
+codeBackgroundColor = "#F5F5F7"
+codeTextColor = "#1D1D1F"
+
+# 语义色（苹果系统色系）
+redColor = "#FF3B30"
+orangeColor = "#FF9500"
+yellowColor = "#FFCC00"
+greenColor = "#34C759"
+blueColor = "#0071E3"
+violetColor = "#AF52DE"
+grayColor = "#8E8E93"
+
+# 图表分类色（Plotly / Altair / Vega）
+chartCategoricalColors = ["#0071E3", "#34C759", "#FF9500", "#FF3B30", "#AF52DE", "#5AC8FA", "#8E8E93"]
+dataframeBorderColor = "#E8E8ED"
+dataframeHeaderBackgroundColor = "#F5F5F7"
+
+[theme.dark]
+primaryColor = "#2997FF"
+backgroundColor = "#0D0D0F"
+secondaryBackgroundColor = "#1D1D1F"
+textColor = "#F5F5F7"
+linkColor = "#2997FF"
+borderColor = "#424245"
+codeBackgroundColor = "#1D1D1F"
+codeTextColor = "#F5F5F7"
+
+# 语义色（苹果深色系统色系）
+redColor = "#FF453A"
+orangeColor = "#FF9F0A"
+yellowColor = "#FFD60A"
+greenColor = "#30D158"
+blueColor = "#0A84FF"
+violetColor = "#BF5AF2"
+grayColor = "#98989D"
+
+# 图表分类色
+chartCategoricalColors = ["#0A84FF", "#30D158", "#FFD60A", "#FF453A", "#BF5AF2", "#64D2FF", "#98989D"]
+dataframeBorderColor = "#2C2C2E"
+dataframeHeaderBackgroundColor = "#1D1D1F"

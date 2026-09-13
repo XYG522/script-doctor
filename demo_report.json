@@ -36,7 +36,7 @@
   },
   "score": {
     "overall": 68,
-    "dimensions": {"character": 62, "emotion": 75, "pacing": 60, "logic": 70, "commercial": 55}
+    "dimensions": {"character": 62, "emotion": 75, "pacing": 60, "logic": 70, "structure": 66, "commercial": 55}
   },
   "characters": {
     "cast": [
@@ -125,6 +125,35 @@
       }
     ]
   },
+  "structure": {
+    "acts": [
+      {"act": 1, "name": "第一幕 相遇", "scene_start": 1, "scene_end": 2,
+       "summary": "两个夜行者在便利店相遇，互相试探"},
+      {"act": 2, "name": "第二幕 靠近", "scene_start": 3, "scene_end": 4,
+       "summary": "共鸣达成，又各自退回孤独"}
+    ],
+    "beats": [
+      {"name": "激励事件", "scene": 1, "description": "陈默深夜进店买烟，打破李薇的守夜常态",
+       "evidence": {"scene": 1, "text": "陈默推门进来，买了一包烟"}},
+      {"name": "中点", "scene": 3, "description": "一杯热水与「晚上才像活着」的共鸣，关系顶点",
+       "evidence": {"scene": 3, "text": "白天太吵，晚上才像活着"}},
+      {"name": "结局", "scene": 4, "description": "照片揭示思念，结尾落回孤独底色",
+       "evidence": {"scene": 4, "text": "从抽屉里拿出一张泛黄的照片，看了很久"}}
+    ],
+    "foreshadows": [
+      {"setup": "李薇辞职守夜「就想晚上清静」，暗示在回避什么", "setup_scene": 3,
+       "payoff": "第4场抽屉里的泛黄照片揭示思念之人", "payoff_scene": 4, "status": "resolved"},
+      {"setup": "陈默蹲门口说「家没人」", "setup_scene": 2, "status": "unresolved"}
+    ],
+    "arcs": [
+      {"character": "李薇", "start_state": "疲惫守夜、封闭自处",
+       "turning_event": "与陈默的共鸣对话", "turning_scene": 3,
+       "end_state": "独自回望照片，孤独中留有短暂暖意"},
+      {"character": "陈默", "start_state": "深夜游荡、回避回家",
+       "turning_event": "接过热水、说出心里话", "turning_scene": 3,
+       "end_state": "离开便利店，继续独自夜行"}
+    ]
+  },
   "commercial": {
     "genre_elements": ["都市情感", "文艺短片"],
     "target_audience": "25-35岁都市青年、短片节展观众",
@@ -156,10 +185,30 @@
       "references": []
     }
   ],
+  "rewrites": [
+    {
+      "rank": 1,
+      "original": {"scene": 1, "text": "李薇站在收银台后打哈欠"},
+      "rewritten": "李薇站在收银台后打哈欠。收银台一角放着倒扣的相框，李薇擦到那里时停了停，才把抹布移开。",
+      "note": "在原句后插入相框细节与停顿动作，为结尾照片埋伏笔"
+    },
+    {
+      "rank": 2,
+      "original": {"scene": 2, "text": "陈默蹲在门口点烟"},
+      "rewritten": "陈默蹲在门口点烟，手机亮起来电，他看了一眼，按掉。",
+      "note": "补一个按掉来电的动作，暗示「家没人」背后在回避什么"
+    },
+    {
+      "rank": 3,
+      "original": {"scene": 2, "text": "李薇出来倒垃圾，看见他，停下脚步"},
+      "rewritten": "李薇出来倒垃圾，看见他，停下脚步。李薇没说话，转身回店里，倒了一杯热水端出来。两人隔着门框聊天。",
+      "note": "倒垃圾相遇与递热水合并为一场连续动作，节奏更紧凑"
+    }
+  ],
   "meta": {
     "model": "deepseek-v4-pro",
     "generated_at": "2026-09-12T00:00:00Z",
     "is_cached_demo": true,
-    "modules_selected": ["characters", "relationships", "emotion", "pacing", "logic", "commercial"]
+    "modules_selected": ["characters", "relationships", "emotion", "pacing", "logic", "structure", "commercial"]
   }
 }
