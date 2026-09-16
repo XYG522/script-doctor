@@ -18,6 +18,7 @@ import analyzer
 import auth
 import charts
 import compare
+import doctor_agent
 import hardcheck
 import history
 from charts import ROLE_LABEL
@@ -816,9 +817,18 @@ def _render_hard_checks(report):
         st.warning(f"第{item.get('scene')}场过短：{item.get('chars')} 字")
 
 
-def _render_chat(report):
-    """报告页：剧本医生对话。每问 1 次 LLM 调用，结构化回答 + 引用逐字硬校验。
+# 查证步骤图标（agent 中间步骤展示，与全界面 Material 图标风格一致）
+_TRACE_ICONS = {
+    "search_script": ":material/search:",
+    "get_scene": ":material/menu_book:",
+    "read_report_section": ":material/summarize:",
+}
 
+
+def _render_chat(report):
+    """报告页：剧本医生对话（agent 模式：多轮工具查证，异常自动降级单轮）。
+
+    每问 ≈2~6 次 LLM 调用（1 步 = 1 次），中间步骤实时展示；结构化回答 + 引用逐字硬校验。
     不可用场景（不渲染输入框）：游客 / 离线演示 / 从历史打开的旧报告（未存全文）。
     """
     st.divider()
@@ -833,21 +843,25 @@ def _render_chat(report):
         st.info("旧报告未存全文，暂不支持对话。重新分析该剧本后即可追问。")
         return
 
-    est = analyzer.estimate_chat_cost(
+    est = doctor_agent.estimate_agent_cost(
         st.session_state.get("script_text", ""), report, st.session_state["chat_history"], "")
     cu = st.session_state["chat_usage"]
+    est_note = f"agent 模式 · 按 ≈{doctor_agent.AGENT_EST_STEPS} 步估算 · 闲时价，实际以账单为准"
     if cu["calls"]:
-        st.caption(f"单问预估 ≈${est['est_cost_usd']:.4f}（按当前上下文） · "
-                   f"已问 {cu['calls']} 次 · 累计 ≈${cu['cost']:.4f}（按实际用量）")
+        st.caption(f"单问预估 ≈${est['est_cost_usd']:.4f}（{est_note}） · "
+                   f"已调用 {cu['calls']} 次 · 累计 ≈${cu['cost']:.4f}（按实际用量）")
     else:
-        st.caption(f"单问预估 ≈${est['est_cost_usd']:.4f}"
-                   "（按当前上下文与闲时价估算，实际以账单为准）")
+        st.caption(f"单问预估 ≈${est['est_cost_usd']:.4f}（{est_note}）")
 
     for m in st.session_state["chat_history"]:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
             for q in m.get("quotes") or []:
                 st.markdown(f"> 引用 · 第 {q.get('scene')} 场：“{q.get('text')}”")
+            for t in m.get("trace") or []:
+                icon = _TRACE_ICONS.get(t.get("name"), ":material/query_stats:")
+                label = doctor_agent.TOOL_LABELS.get(t.get("name"), t.get("name"))
+                st.caption(f"{icon} 已查证 · {label} · {t.get('summary', '')}")
             if m.get("confidence") is not None:
                 conf = float(m["confidence"])
                 if conf >= 0.8:
@@ -866,18 +880,31 @@ def _render_chat(report):
     q = st.chat_input("追问剧本相关问题，如：主角的动机在哪一场立起来？")
     if q:
         st.session_state["chat_history"].append({"role": "user", "content": q})
-        warn = []
+        warn, trace = [], []
         try:
-            data, usage = analyzer.ask_doctor(
-                get_client(), st.session_state.get("script_text", ""),
-                report, st.session_state["chat_history"], q, warn,
-            )
+            with st.status("剧本医生查证中…", expanded=False) as status:
+                def _step_cb(text):
+                    status.write(text)
+
+                data, usage, trace = doctor_agent.run_doctor_agent(
+                    get_client(), st.session_state.get("script_text", ""),
+                    report, st.session_state["chat_history"], q,
+                    step_cb=_step_cb, warnings=warn,
+                )
         except Exception as e:
-            data, usage = None, None
-            warn.append(f"[剧本医生] 调用失败：{e}")
+            warn.append(f"[剧本医生Agent] 异常，降级单轮：{e}")
+            data, usage, trace = None, None, []
+            try:
+                data, usage = analyzer.ask_doctor(
+                    get_client(), st.session_state.get("script_text", ""),
+                    report, st.session_state["chat_history"], q, warn,
+                )
+            except Exception as e2:
+                data, usage = None, None
+                warn.append(f"[剧本医生] 单轮兜底也失败：{e2}")
         if usage:
             cost = round(analyzer.DeepSeekClient.estimate_cost(usage), 4)
-            st.session_state["chat_usage"]["calls"] += 1
+            st.session_state["chat_usage"]["calls"] += usage.get("calls", 1)
             st.session_state["chat_usage"]["input_tokens"] += usage.get("input_tokens", 0)
             st.session_state["chat_usage"]["output_tokens"] += usage.get("output_tokens", 0)
             st.session_state["chat_usage"]["cost"] = round(
@@ -888,6 +915,7 @@ def _render_chat(report):
                 "content": data.get("answer") or "（未生成回答）",
                 "quotes": data.get("evidence_quotes") or [],
                 "confidence": data.get("confidence"),
+                "trace": trace,
                 "note": "；".join(warn) if warn else "",
             })
         else:
@@ -896,6 +924,7 @@ def _render_chat(report):
                 "content": "抱歉，这次回答没有生成成功（调用或校验失败）。请换个问法再试。",
                 "quotes": [],
                 "confidence": None,
+                "trace": trace,
                 "note": "；".join(warn) if warn else "",
             })
         st.rerun()
@@ -1244,7 +1273,7 @@ def render_report_page():
         with st.expander("原始 JSON"):
             st.json(report)
 
-    # ---- 剧本医生对话（每问 1 次 LLM 调用，置于页面最底部）----
+    # ---- 剧本医生对话（agent 模式：多轮查证，置于页面最底部）----
     _render_chat(report)
 
 

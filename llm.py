@@ -74,13 +74,6 @@ class DeepSeekClient:
         )
         elapsed = time.time() - start
 
-        u = resp.usage or {}
-
-        def _g(name, default=0):
-            if isinstance(u, dict):
-                return u.get(name, default)
-            return getattr(u, name, default)
-
         raw = (resp.choices[0].message.content or "{}").strip()
         try:
             data = json.loads(raw)
@@ -91,11 +84,54 @@ class DeepSeekClient:
         return {
             "data": data,
             "elapsed": elapsed,
-            "usage": {
-                "input_tokens": _g("prompt_tokens"),
-                "cache_hit_tokens": _g("prompt_cache_hit_tokens"),
-                "output_tokens": _g("completion_tokens"),
-            },
+            "usage": self._usage(resp),
+        }
+
+    @staticmethod
+    def _usage(resp) -> dict:
+        """从响应对象提取 token 用量（兼容 dict / 对象两种 usage 形态）。"""
+        u = getattr(resp, "usage", None) or {}
+
+        def _g(name, default=0):
+            if isinstance(u, dict):
+                return u.get(name, default)
+            return getattr(u, name, default)
+
+        return {
+            "input_tokens": _g("prompt_tokens"),
+            "cache_hit_tokens": _g("prompt_cache_hit_tokens"),
+            "output_tokens": _g("completion_tokens"),
+        }
+
+    def complete_with_tools(self, system: str, messages: list, tools: list) -> dict:
+        """一次带工具定义的调用（默认输出格式，不强制 json_object，供 agent 循环使用）。
+
+        messages：对话消息列表（user/assistant/tool 角色的 dict；assistant 含
+        tool_calls 时格式为 {"id","type":"function","function":{"name","arguments"}}）。
+        返回 {"message": {"content","tool_calls"}, "elapsed", "usage"}；
+        tool_calls 为 [{"id","name","arguments"}]（arguments 为 JSON 字符串），无调用时为空列表。
+        """
+        start = time.time()
+        resp = self._client.chat.completions.create(
+            model=self.model,
+            temperature=TEMPERATURE,
+            max_tokens=MAX_TOKENS,
+            messages=[{"role": "system", "content": system}] + list(messages),
+            tools=tools,
+        )
+        elapsed = time.time() - start
+        msg = resp.choices[0].message
+        tool_calls = []
+        for t in (msg.tool_calls or []):
+            tool_calls.append({
+                "id": t.id,
+                "name": t.function.name,
+                "arguments": t.function.arguments,
+            })
+        return {
+            "message": {"content": (msg.content or "").strip(), "tool_calls": tool_calls},
+            "elapsed": elapsed,
+            "usage": self._usage(resp),
         }
 
     @staticmethod

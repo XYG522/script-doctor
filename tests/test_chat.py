@@ -9,6 +9,7 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import auth  # noqa: E402
+import doctor_agent  # noqa: E402
 import history  # noqa: E402
 import analyzer  # noqa: E402
 
@@ -165,15 +166,15 @@ def fake_pipeline(text, client, progress_cb=None, prev_suggestions=None, modules
     return FAKE_REPORT, []
 
 
-def fake_ask_doctor(client, script_text, report, history, question, warnings=None):
+def fake_run_agent(client, script_text, report, history, question, step_cb=None, warnings=None):
     FAKE_LOGS["questions"].append(question)
     FAKE_LOGS["hist_lens"].append(len(history))
     FAKE_LOGS["script"] = script_text
-    return CHAT_DATA, {"input_tokens": 100, "cache_hit_tokens": 0, "output_tokens": 50}
+    return CHAT_DATA, {"input_tokens": 100, "cache_hit_tokens": 0, "output_tokens": 50, "calls": 1}, []
 
 
 analyzer.run_pipeline = fake_pipeline
-analyzer.ask_doctor = fake_ask_doctor
+doctor_agent.run_doctor_agent = fake_run_agent
 
 auth.register("对话用户", "abc12345")
 at = AppTest.from_file(APP, default_timeout=60)
@@ -203,7 +204,7 @@ check(any("主角动机在第2场立起来" in x for x in md), "医生回答正�
 check(any("引用 · 第 2 场：“好quote”" in x for x in md), "已验证引用以引用块显示")
 caps = [c.value for c in at.caption]
 check(any("置信度" in c and "90%" in c for c in caps), "置信度徽章显示（0.9 → 高 · 90%）")
-check(any("已问 1 次" in c and "累计" in c for c in caps), "累计调用与成本显示")
+check(any("已调用 1 次" in c and "累计" in c for c in caps), "累计调用与成本显示")
 check(at.session_state["chat_usage"]["calls"] == 1, "会话累计 1 次调用")
 
 at.chat_input[0].set_value("反派是谁？").run()
